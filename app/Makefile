@@ -1,8 +1,8 @@
-CXX = g++
+CXX = mpic++
 CXXFLAGS = -fopenmp -g3 -Wall -std=c++17
 MKDIR = mkdir -p
 
-LIBS = -lm
+LIBS = -lm -lmpi
 
 directorios:
 	$(MKDIR) build dist

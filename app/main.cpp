@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 #include <cstdlib>
+#include <openmpi/mpi.h>
 #include "Matriz.h"
 
 
@@ -25,6 +26,7 @@ int aleatoreo(int min, int max);
  * @return El código de salida del programa
  */
 int main(int argc, char** argv) {
+    MPI_Init(&argc, &argv);
     srand(time(0));
     /**
      * Incluir acá la lógica del programa
@@ -42,14 +44,16 @@ int main(int argc, char** argv) {
             }
         }
 
-//        magica.imprimir();
-        std::cout << std::endl << "La matriz es magica " << magica.esMagica() << std::endl;
+        //        magica.imprimir();
+        std::cout << std::endl << "La matriz es magica " << magica.esMagicaSecuencial() << std::endl;
 
 
     } else {
         // Mostrar los integrantes
         participantes(argv[0]);
     }
+
+    MPI_Finalize();
     return EXIT_SUCCESS;
 }
 

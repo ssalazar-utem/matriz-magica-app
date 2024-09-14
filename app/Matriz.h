@@ -55,7 +55,19 @@ public:
      * 
      * @return true si la matriz es mágica o false en cualquier otro caso
      */
-    bool esMagica() const;
+    bool esMagicaSecuencial() const;
+    
+    /**
+     * 
+     * @return true si la matriz es mágica o false en cualquier otro caso
+     */
+    bool esMagicaOpenMP() const;
+    
+    /**
+     * 
+     * @return true si la matriz es mágica o false en cualquier otro caso
+     */
+    bool esMagicaMPI() const;
 private:
     int** datos;
     int largo;

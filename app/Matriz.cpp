@@ -1,3 +1,5 @@
+#include <openmpi/mpi.h>
+
 #include "Matriz.h"
 
 Matriz::Matriz(int largo) {
@@ -56,7 +58,68 @@ int Matriz::GetValor(int fila, int columna) const {
     return valor;
 }
 
-bool Matriz::esMagica() const {
+bool Matriz::esMagicaSecuencial() const {
+    if (largo <= 0) {
+        return false;
+    }
+
+    // Esta variable nos ayudará con los calculos
+    int sumaMagica = 0;
+    // Revisamos la suma de la primera fila (vamos de columna en columna)
+    for (int columna = 0; columna < largo; columna++) {
+        sumaMagica += datos[0][columna];
+    }
+
+    // verificamos por fila (excluyendo la primera (0)
+    for (int fila = 1; fila < largo; fila++) {
+        int sumaXfila = 0;
+        for (int columna = 0; columna < largo; columna++) {
+            sumaXfila += datos[fila][columna];
+        }
+
+        if (sumaXfila != sumaMagica) {
+            return false;
+        }
+    }
+
+
+    // verificamos por columna
+    for (int columna = 0; columna < largo; columna++) {
+        int sumaXcolumna = 0;
+        for (int fila = 0; fila < largo; fila++) {
+            sumaXcolumna += datos[fila][columna];
+        }
+
+        if (sumaXcolumna != sumaMagica) {
+            return false;
+        }
+    }
+
+    // Verificamos la diagonal principal
+    int sumaXdiagonalPrincipal = 0;
+    for (int principal = 0; principal < largo; principal++) {
+        sumaXdiagonalPrincipal += datos[principal][principal];
+    }
+
+    if (sumaXdiagonalPrincipal != sumaMagica) {
+        return false;
+    }
+
+    // Verificamos la diagonal secundaria
+    int sumaXdiagonalSecundaria = 0;
+    for (int secundaria = 0; secundaria < largo; secundaria++) {
+        int columna = largo - secundaria - 1;
+        sumaXdiagonalSecundaria += datos[secundaria][columna];
+    }
+
+    if (sumaXdiagonalSecundaria != sumaMagica) {
+        return false;
+    }
+
+    return true;
+}
+
+bool Matriz::esMagicaOpenMP() const {
     if (largo <= 0) {
         return false;
     }
@@ -134,5 +197,82 @@ bool Matriz::esMagica() const {
         return false;
     }
 
+    return true;
+}
+
+bool Matriz::esMagicaMPI() const {
+    int rank, size;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+    // Largo de matriz dividido por la cantidad de nodos a nuestra disposición
+    int filasPorProceso = largo / size;
+    int inicioProceso = rank * filasPorProceso;
+    int finProceso = (rank == size - 1) ? largo : inicioProceso + filasPorProceso;
+
+    // Calculo de valor base.
+    int sumaMagica = 0;
+    if (rank == 0) {
+        for (int columna = 0; columna < largo; columna++) {
+            sumaMagica += datos[0][columna];
+        }
+    }
+
+    // Enviar este valor a todos los nodos
+    MPI_Bcast(&sumaMagica, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+    // Cada nodo, calcule sus datos
+    bool esFilaValida = true;
+    for (int filaActual = inicioProceso; filaActual < finProceso; filaActual++) {
+        int sumaFila = 0;
+        for (int columna = 0; columna < largo; columna++) {
+            sumaFila += datos[filaActual][columna];
+        }
+
+        if (sumaFila != sumaMagica) {
+            esFilaValida = false;
+            break;
+        }
+    }
+
+    bool resultadoGlobal;
+    MPI_Allreduce(&esFilaValida, &resultadoGlobal, 1, MPI_C_BOOL, MPI_LAND, MPI_COMM_WORLD);
+    if (!resultadoGlobal) {
+        return false;
+    }
+
+    // Procesar columnas
+    bool esColumnaValida = true;
+    for (int columnaActual = inicioProceso; columnaActual < finProceso; columnaActual++) {
+        int sumaColumna = 0;
+        for (int fila = 0; fila < largo; fila++) {
+            sumaColumna += datos[fila][columnaActual];
+        }
+
+        if (sumaColumna != sumaMagica) {
+            esColumnaValida = false;
+            break;
+        }
+    }
+
+    MPI_Allreduce(&esColumnaValida, &resultadoGlobal, 1, MPI_C_BOOL, MPI_LAND, MPI_COMM_WORLD);
+    if (!resultadoGlobal) {
+        return false;
+    }
+
+    // Verificar las diagonales
+    if (rank == 0) {
+        int diagonalPrincial = 0;
+        int diagonalSecundaria = 0;
+        for (int diagonal = 0; diagonal < largo; diagonal++) {
+            int columnaReversa = largo - diagonal - 1;
+            diagonalPrincial += datos[diagonal][diagonal];
+            diagonalSecundaria += datos[diagonal][columnaReversa];
+        }
+
+        if ((sumaMagica != diagonalPrincial) || (sumaMagica != diagonalSecundaria)) {
+            return false;
+        }
+    }
     return true;
 }
