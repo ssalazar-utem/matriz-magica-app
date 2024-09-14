@@ -42,7 +42,7 @@ int main(int argc, char** argv) {
             }
         }
 
-        magica.imprimir();
+//        magica.imprimir();
         std::cout << std::endl << "La matriz es magica " << magica.esMagica() << std::endl;
 
 

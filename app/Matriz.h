@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <iomanip>
+#include <omp.h>
 
 class Matriz {
 public:

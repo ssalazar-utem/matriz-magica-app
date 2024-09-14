@@ -64,37 +64,57 @@ bool Matriz::esMagica() const {
     // Esta variable nos ayudará con los calculos
     int sumaMagica = 0;
     // Revisamos la suma de la primera fila (vamos de columna en columna)
+#pragma omp parallel for reduction (+:sumaMagica)
     for (int columna = 0; columna < largo; columna++) {
         sumaMagica += datos[0][columna];
     }
 
+    bool filaValida = true;
     // verificamos por fila (excluyendo la primera (0)
+#pragma omp parallel for
     for (int fila = 1; fila < largo; fila++) {
-        int sumaXfila = 0;
-        for (int columna = 0; columna < largo; columna++) {
-            sumaXfila += datos[fila][columna];
-        }
+        if (filaValida) {
+            int sumaXfila = 0;
+            for (int columna = 0; columna < largo; columna++) {
+                sumaXfila += datos[fila][columna];
+            }
 
-        if (sumaXfila != sumaMagica) {
-            return false;
+            if (sumaXfila != sumaMagica) {
+#pragma omp atomic write
+                filaValida = false;
+            }
         }
+    }
+    // Si en paralelo se dermina inválido. Termina
+    if (!filaValida) {
+        return false;
     }
 
 
+    bool columnaValida = true;
     // verificamos por columna
+#pragma omp parallel for
     for (int columna = 0; columna < largo; columna++) {
-        int sumaXcolumna = 0;
-        for (int fila = 0; fila < largo; fila++) {
-            sumaXcolumna += datos[fila][columna];
-        }
+        if (columnaValida) {
+            int sumaXcolumna = 0;
+            for (int fila = 0; fila < largo; fila++) {
+                sumaXcolumna += datos[fila][columna];
+            }
 
-        if (sumaXcolumna != sumaMagica) {
-            return false;
+            if (sumaXcolumna != sumaMagica) {
+#pragma omp atomic write
+                columnaValida = false;
+            }
         }
+    }
+
+    if (!columnaValida) {
+        return false;
     }
 
     // Verificamos la diagonal principal
     int sumaXdiagonalPrincipal = 0;
+#pragma omp parallel for reduction (+:sumaXdiagonalPrincipal)
     for (int principal = 0; principal < largo; principal++) {
         sumaXdiagonalPrincipal += datos[principal][principal];
     }
@@ -105,9 +125,9 @@ bool Matriz::esMagica() const {
 
     // Verificamos la diagonal secundaria
     int sumaXdiagonalSecundaria = 0;
+#pragma omp parallel for reduction (+:sumaXdiagonalSecundaria)
     for (int secundaria = 0; secundaria < largo; secundaria++) {
-        int columna = largo - secundaria - 1;
-        sumaXdiagonalSecundaria += datos[secundaria][columna];
+        sumaXdiagonalSecundaria += datos[secundaria][largo - secundaria - 1];
     }
 
     if (sumaXdiagonalSecundaria != sumaMagica) {
